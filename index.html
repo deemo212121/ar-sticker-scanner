@@ -312,7 +312,7 @@
             this.showStatus("loading");
             await this.requestCameraAccess();
             this.showStatus("scanning");
-            this.startScanning();
+            await this.initializeMindAR();
           } catch (error) {
             this.handleError(
               "Camera access denied. Please check your browser permissions.",
@@ -352,25 +352,41 @@
             }
           }
         }
-        startScanning() {
-          this.isScanning = true;
-          setTimeout(
-            () => {
-              if (Math.random() > 0.7) {
-                this.detectSticker();
-              } else {
-                this.startScanning();
-              }
-            },
-            3000 + Math.random() * 2000,
-          );
-        }
-        detectSticker() {
-          this.showStatus("success");
-          const arContainer = document.getElementById("ar-container");
-          arContainer.innerHTML = ""; // Clear previous content
-          this.showARContent();
-        }
+		async initializeMindAR() {
+		  const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+			container: document.querySelector("#app"),
+			imageTargetSrc: "./assets/combined.mind",
+			maxTrack: 1,
+		  });
+
+		  const { renderer, scene, camera } = mindarThree;
+
+		  const anchor = mindarThree.addAnchor(0);
+		  anchor.onTargetFound = () => {
+			this.showStatus("success");
+			this.showARContent();
+
+			const arContainer = document.getElementById("ar-container");
+			arContainer.innerHTML = "";
+
+			const gif = document.createElement("img");
+			gif.src = "./assets/sticker1.gif";
+			gif.style.width = "200px";
+			gif.style.height = "auto";
+			arContainer.appendChild(gif);
+		  };
+
+		  anchor.onTargetLost = () => {
+			this.hideARContent();
+			this.showStatus("scanning");
+		  };
+
+		  await mindarThree.start();
+		  renderer.setAnimationLoop(() => {
+			renderer.render(scene, camera);
+		  });
+		}
+		
         showARContent() {
           const arContent = document.getElementById("ar-content");
           arContent.classList.remove("hidden");
